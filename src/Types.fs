@@ -8,7 +8,7 @@ type HNItem =
       Type: HNItemType
       By: string
       Time: bigint
-      Text: string
+      Text: string Option
       Dead: bool Option
       Parent: bigint Option
       Poll: bigint Option
@@ -18,3 +18,13 @@ type HNItem =
       Title: string Option
       Parts: bigint list Option
       Descendants: bigint Option }
+
+let getItemTitleText (item: HNItem) : string =
+    match item.Title with
+    | Some title -> title
+    | None -> "No-Title"
+
+let getItemScoreText (item: HNItem) : string =
+    match item.Score with
+    | Some score -> sprintf "%O" score
+    | None -> "0"

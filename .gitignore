@@ -294,3 +294,6 @@ __pycache__/
 *.xsd.cs
 
 .ionide
+
+src/js
+public

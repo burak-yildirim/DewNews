@@ -5,6 +5,8 @@ type Deferred<'T> =
     | InProgress
     | Resolved of  'T
 
+type DeferredResult<'T> = Deferred<Result<'T, string>>
+
 [<RequireQualifiedAccess>]
 module Deferred =
     let isResolved = function

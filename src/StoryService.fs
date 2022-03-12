@@ -7,13 +7,15 @@ open Types
 open Mapper
 
 let private getStoryUrl = sprintf "https://hacker-news.firebaseio.com/v0/%sstories.json?print=pretty"
+let private getItemUrl = sprintf "https://hacker-news.firebaseio.com/v0/item/%A.json?print=pretty"
 let private storyUrl =
     {| New = getStoryUrl "new"
        Top = getStoryUrl "top"
        Best = getStoryUrl "best"
        Ask = getStoryUrl "ask"
        Show = getStoryUrl "show"
-       Job = getStoryUrl "job" |}
+       Job = getStoryUrl "job" 
+       Item = getItemUrl |}
 
 let getTopStories (): Async<Result<bigint list, string>> = async {
     let! (statusCode, responseText) = Http.get storyUrl.Top
@@ -25,6 +27,11 @@ let getTopStories (): Async<Result<bigint list, string>> = async {
     | code -> return Error (sprintf "Error! Status code: %d" code)
 }
 
-let getStory (storyId: int): Async<Result<int, string>> = async {
-    return Ok 5
+let getStory (storyId: bigint): Async<Result<HNItem, string>> = async {
+    let! (statusCode, responseText) = Http.get (storyUrl.Item storyId)
+    match statusCode with
+    | 200 ->
+        let story = Decode.fromString hnItemDecoder responseText
+        return story
+    | code -> return Error (sprintf "Error! Status code: %d" code)
 }
