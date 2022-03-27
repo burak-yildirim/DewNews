@@ -75,29 +75,33 @@ let storyCardWidget (deferredStory: DeferredResult<HNItem>) =
     | NotStartedYet
     | InProgress ->
         Html.div [
-            prop.className "card bg-base-100 shadow-xl my-4"
-            prop.children [
-                Html.div [
-                    prop.className "justify-center"
-                    prop.children [ loadingWidget ]
-                ]
-            ]
+            prop.className "card bg-base-100 shadow-xl my-4 flex w-full place-content-center"
+            prop.children [loadingWidget]
         ]
     | Resolved (Ok story) ->
         Html.div [
-            prop.className "card card-side bg-base-900 shadow-xl my-4 flex w-full"
+            prop.className "card card-side bg-base-900 shadow-xl my-4 flex w-full content-center"
             prop.children [
                 Html.div [
-                    prop.className "flex-none w-14 h-14 grid grid-flow-col place-content-center"
+                    prop.className "flex-none w-14 h-14 grid grid-flow-col justify-around content-center"
                     prop.children [ 
-                        Html.div (getItemScoreText story)
-                        Html.i [prop.className "fa-regular fa-chart-bar"]
+                        Html.div [
+                            prop.className "h-6"
+                            prop.text (getItemScoreText story)
+                        ]
+                        Html.div [
+                            prop.className "h-6"
+                            prop.children [
+                                Html.i [prop.className "fa-regular fa-chart-bar fa-xl"]
+                            ]
+                        ]
                     ]
-                    // prop.text "X"
                 ]
                 Html.div [
                     prop.className "divider divider-horizontal"
-                    prop.text "A"
+                    prop.children [
+                        Html.i [prop.className "fa-solid fa-pipe fa-xl"]
+                    ]
                 ]
                 Html.div [
                     prop.className "flex-1 grid justify-start content-center"
@@ -145,6 +149,12 @@ let render (state: State) (dispatch: Msg -> unit): ReactElement =
                         prop.text "Tab 3"
                     ]
                 ]
+            ]
+
+            Html.button [
+                prop.className "btn btn-primary"
+                prop.text "RELOAD"
+                prop.onClick (fun _ -> InProgress |> LoadStoryIds |> dispatch)
             ]
 
             match state.StoryIds with

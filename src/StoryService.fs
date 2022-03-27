@@ -1,8 +1,10 @@
 module StoryService
 
+open System
 open Fable.SimpleHttp
 open Thoth.Json
 open Deferred
+open Cache
 open Types
 open Mapper
 
@@ -17,7 +19,9 @@ let private storyUrl =
        Job = getStoryUrl "job" 
        Item = getItemUrl |}
 
-let getTopStories (): Async<Result<bigint list, string>> = async {
+let private expirationSpan = new TimeSpan(hours = 0, minutes = 0, seconds = 10)
+
+let private getTopStoriesInternal (): Async<Result<bigint list, string>> = async {
     let! (statusCode, responseText) = Http.get storyUrl.Top
     match statusCode with
     | 200 ->
@@ -27,7 +31,10 @@ let getTopStories (): Async<Result<bigint list, string>> = async {
     | code -> return Error (sprintf "Error! Status code: %d" code)
 }
 
-let getStory (storyId: bigint): Async<Result<HNItem, string>> = async {
+let getTopStories: (unit -> Async<Result<bigint list, string>>) =
+    cached (Some expirationSpan) getTopStoriesInternal
+
+let private getStoryInternal (storyId: bigint): Async<Result<HNItem, string>> = async {
     let! (statusCode, responseText) = Http.get (storyUrl.Item storyId)
     match statusCode with
     | 200 ->
@@ -35,3 +42,6 @@ let getStory (storyId: bigint): Async<Result<HNItem, string>> = async {
         return story
     | code -> return Error (sprintf "Error! Status code: %d" code)
 }
+
+let getStory: (bigint -> Async<Result<HNItem, string>>) =
+    cached (Some expirationSpan) getStoryInternal
