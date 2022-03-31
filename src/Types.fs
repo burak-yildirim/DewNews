@@ -28,3 +28,8 @@ let getItemScoreText (item: HNItem) : string =
     match item.Score with
     | Some score -> sprintf "%O" score
     | None -> "0"
+
+let getItemUrl (item: HNItem) : string =
+    match item.Url with
+    | Some url -> url
+    | None -> sprintf "https://news.ycombinator.com/item?id=%O" item.Id

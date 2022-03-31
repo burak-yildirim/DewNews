@@ -79,30 +79,26 @@ let storyCardWidget (deferredStory: DeferredResult<HNItem>) =
             prop.children [loadingWidget]
         ]
     | Resolved (Ok story) ->
-        Html.div [
-            prop.className "card card-side bg-base-900 shadow-xl my-4 flex w-full content-center"
+        Html.a [
+            prop.className "btn btn-ghost normal-case bg-base-900 shadow-lg my-4 flex w-full content-center"
+            prop.href (getItemUrl story)
+            prop.target "_blank"
+            prop.rel "noopener noreferrer"
             prop.children [
                 Html.div [
-                    prop.className "flex-none w-14 h-14 grid grid-flow-col justify-around content-center"
+                    prop.className "flex-none w-14 h-14 grid grid-flow-col justify-around content-center mr-6"
                     prop.children [ 
                         Html.div [
-                            prop.className "h-6"
                             prop.text (getItemScoreText story)
                         ]
                         Html.div [
-                            prop.className "h-6"
                             prop.children [
                                 Html.i [prop.className "fa-regular fa-chart-bar fa-xl"]
                             ]
                         ]
                     ]
                 ]
-                Html.div [
-                    prop.className "divider divider-horizontal"
-                    prop.children [
-                        Html.i [prop.className "fa-solid fa-pipe fa-xl"]
-                    ]
-                ]
+                
                 Html.div [
                     prop.className "flex-1 grid justify-start content-center"
                     prop.text (getItemTitleText story)
