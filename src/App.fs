@@ -6,44 +6,56 @@ open Feliz
 open Deferred
 open Types
 open StoryService
+open Microsoft.FSharp.Reflection
 Fable.Core.JsInterop.importAll "./styles/main.css"
 // Fable.Core.JsInterop.importAll "@fortawesome/fontawesome-free/js/regular.js"
 
+type StoryKind = NewStories | TopStories | BestStories | AskStories | ShowStories | JobStories
 
 type State = 
     { StoryIds: DeferredResult<bigint list>
-      StoryMap: Map<bigint, DeferredResult<HNItem>> }
+      StoryMap: Map<bigint, DeferredResult<HNItem>>
+      StoryKind: StoryKind }
 
 type Msg = 
-    | LoadStoryIds of DeferredResult<bigint list>
-    | LoadStory of bigint * DeferredResult<HNItem>
+    | SetStoryIds of DeferredResult<bigint list>
+    | SetStory of bigint * DeferredResult<HNItem>
+    | SetStoryKind of StoryKind
 
 let init () =
-    { StoryIds = InProgress; StoryMap = Map.empty }, Cmd.ofMsg (LoadStoryIds InProgress)
+    { StoryIds = InProgress; StoryMap = Map.empty; StoryKind = NewStories }, Cmd.ofMsg (SetStoryIds InProgress)
+
+let getStoryIds = function
+    | NewStories -> getNewStoryIds ()
+    | TopStories -> getTopStoryIds ()
+    | BestStories -> getBestStoryIds ()
+    | AskStories -> getAskStoryIds ()
+    | ShowStories -> getShowStoryIds ()
+    | JobStories -> getJobStoryIds ()
 
 let update (msg: Msg) (state: State): (State * Cmd<Msg>) =
     match msg with
-    | LoadStoryIds NotStartedYet
-    | LoadStoryIds InProgress->
+    | SetStoryIds NotStartedYet
+    | SetStoryIds InProgress->
         let cmdAsync = async {
-            let! storyIdsResult = getTopStories ()
-            return (storyIdsResult |> Resolved |> LoadStoryIds)
+            let! storyIdsResult = getStoryIds state.StoryKind
+            return (storyIdsResult |> Resolved |> SetStoryIds)
         }
 
         { state with StoryIds = InProgress }, Cmd.OfAsync.result cmdAsync
-    | LoadStoryIds (Resolved (Ok ids) as resolved) ->
+    | SetStoryIds (Resolved (Ok ids) as resolved) ->
         let storyTuples: (bigint * DeferredResult<HNItem>) list =
             ids
             |> List.map (fun id -> id, InProgress)
         let cmd =
             storyTuples
-            |> List.map (fun tuple -> Cmd.ofMsg (LoadStory tuple))
+            |> List.map (fun tuple -> Cmd.ofMsg (SetStory tuple))
             |> Cmd.batch
         
         { state with StoryIds = resolved; StoryMap = (Map.ofList storyTuples) }, cmd
-    | LoadStoryIds (Resolved (Error msg) as resolved) ->
+    | SetStoryIds (Resolved (Error msg) as resolved) ->
         { state with StoryIds = resolved }, Cmd.none
-    | LoadStory (storyId, deferred) ->
+    | SetStory (storyId, deferred) ->
         let newMap =
             Map.change
                 storyId
@@ -58,16 +70,30 @@ let update (msg: Msg) (state: State): (State * Cmd<Msg>) =
             | InProgress ->
                 let cmdAsync = async {
                     let! storyResult = getStory storyId
-                    return ((storyId, Resolved storyResult) |> LoadStory)
+                    return ((storyId, Resolved storyResult) |> SetStory)
                 }
                 Cmd.OfAsync.result cmdAsync
             | Resolved _ -> Cmd.none
 
         { state with StoryMap = newMap }, cmd
+    | SetStoryKind storyKind when state.StoryKind = storyKind -> state, Cmd.none
+    | SetStoryKind storyKind ->
+        { state with StoryKind = storyKind }, Cmd.ofMsg (SetStoryIds InProgress)
 
 let loadingWidget =
     Html.button [
         prop.className "btn btn-circle btn-ghost loading place-self-auto"
+    ]
+
+let tabItemWidget (storyKind: StoryKind) (state: State) (dispatch: Msg -> unit) =
+    let activeTabClass = if storyKind = state.StoryKind then "tab-active" else ""
+    let tabName =
+        storyKind.ToString().Replace("Stories", "")
+    
+    Html.a [
+        prop.className (sprintf "tab tab-lg %s" activeTabClass)
+        prop.text tabName
+        prop.onClick (fun _ -> storyKind |> SetStoryKind |> dispatch)
     ]
 
 let storyCardWidget (deferredStory: DeferredResult<HNItem>) =
@@ -118,39 +144,20 @@ let storyCardWidget (deferredStory: DeferredResult<HNItem>) =
 
 let render (state: State) (dispatch: Msg -> unit): ReactElement =
     Html.div [
-        prop.className "flex flex-col gap-3 place-items-center"
+        prop.className "flex flex-col gap-3 justify-center items-center"
         prop.children [
-            Html.ul [
-                prop.classes [ "menu bg-base-100 menu-horizontal rounded-box place-self-auto" ]
-                prop.children [
-                    Html.li [ Html.a [ Html.text "Item 1" ] ]
-                    Html.li [ Html.a [ Html.text "Item 2" ] ]
-                    Html.li [ Html.a [ Html.text "Item 3" ] ]
-                ]
-            ]
-
-            Html.div [
-                prop.className "tabs tabs-boxed place-self-auto"
-                prop.children [
-                    Html.a [
-                        prop.className "tab tab-lg"
-                        prop.text "Tab 1"
-                    ]
-                    Html.a [
-                        prop.className "tab tab-lg"
-                        prop.text "Tab 2"
-                    ]
-                    Html.a [
-                        prop.className "tab tab-lg"
-                        prop.text "Tab 3"
-                    ]
-                ]
-            ]
-
             Html.button [
                 prop.className "btn btn-primary"
                 prop.text "RELOAD"
-                prop.onClick (fun _ -> InProgress |> LoadStoryIds |> dispatch)
+                prop.onClick (fun _ -> InProgress |> SetStoryIds |> dispatch)
+            ]
+
+            Html.div [
+                prop.className "tabs tabs-boxed"
+                prop.children [
+                    for kindInfo in FSharpType.GetUnionCases typeof<StoryKind> ->
+                        tabItemWidget (FSharpValue.MakeUnion(kindInfo, [||]) :?> StoryKind) state dispatch
+                ]
             ]
 
             match state.StoryIds with
